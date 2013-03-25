@@ -27,90 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 var ghostdriver = ghostdriver || {};
 
-
-function createHAR(address, title, startTime, resources)
-{
-    var entries = [];
-
-    resources.forEach(function (resource) {
-        var request = resource.request,
-            startReply = resource.startReply,
-            endReply = resource.endReply;
-
-        if (!request || !startReply || !endReply) {
-            return;
-        }
-
-        // Exclude Data URI from HAR file because
-        // they aren't included in specification
-        if (request.url.match(/(^data:image\/.*)/i)) {
-            return;
-	}
-
-        entries.push({
-            startedDateTime: request.time.toISOString(),
-            time: endReply.time - request.time,
-            request: {
-                method: request.method,
-                url: request.url,
-                httpVersion: "HTTP/1.1",
-                cookies: [],
-                headers: request.headers,
-                queryString: [],
-                headersSize: -1,
-                bodySize: -1
-            },
-            response: {
-                status: endReply.status,
-                statusText: endReply.statusText,
-                httpVersion: "HTTP/1.1",
-                cookies: [],
-                headers: endReply.headers,
-                redirectURL: "",
-                headersSize: -1,
-                bodySize: startReply.bodySize,
-                content: {
-                    size: startReply.bodySize,
-                    mimeType: endReply.contentType
-                }
-            },
-            cache: {},
-            timings: {
-                blocked: 0,
-                dns: -1,
-                connect: -1,
-                send: 0,
-                wait: startReply.time - request.time,
-                receive: endReply.time - startReply.time,
-                ssl: -1
-            },
-            pageref: address
-        });
-    });
-
-    return {
-        log: {
-            version: '1.2',
-            creator: {
-                name: "PhantomJS",
-                version: phantom.version.major + '.' + phantom.version.minor +
-                    '.' + phantom.version.patch
-            },
-            pages: [{
-                startedDateTime: startTime.toISOString(),
-                id: address,
-                title: title,
-                pageTimings: {
-                    onLoad: -1
-                }
-            }],
-            entries: entries
-        }
-    };
-}
-
-
-
 ghostdriver.Session = function(desiredCapabilities) {
     // private:
     const
@@ -123,9 +39,10 @@ ghostdriver.Session = function(desiredCapabilities) {
         },
         ONE_SHOT_POSTFIX : "OneShot"
     };
-	//ADDED BY MIN ZHANG
+	//++ADDED BY MIN ZHANG
 	var fs = require("fs");
-	
+	var harhelper = require("./third_party/harhelper.js");
+	//--ADDED BY MIN ZHANG
     var
     _defaultCapabilities = {    // TODO - Actually try to match the "desiredCapabilities" instead of ignoring them
         "browserName" : "phantomjs",
@@ -240,12 +157,17 @@ ghostdriver.Session = function(desiredCapabilities) {
         // Register Callbacks to grab any async event we are interested in
         this.setOneShotCallback("onLoadFinished", function (status) {
             _log.debug("_execFuncAndWaitForLoadDecorator", "onLoadFinished: " + status);
-			//ADDED BY MIN ZHANG
+			//++ADDED BY MIN ZHANG
 			var page = _windows[_currentWindowHandle];
 			page.endTime = new Date();
-			har = createHAR("test", "test title", page.endTime, page.resources);
-			fs.write( "C:\\1.har", JSON.stringify(har, undefined, 4), "w");
-			_log.info("[MIN]loading finished ONESHOT");
+			har = harhelper.createHAR(page);
+			fs.write( "C:\\" + page.currentStep + ".har", JSON.stringify(har, undefined, 4), "w");
+			page.startTime = null;
+			page.endTime = null;
+			page.resources = [];
+			page.currentStep++;
+			_log.info("[MIN]" + page.url + " loading finished ONESHOT");
+			//--ADDED BY MIN ZHANG
             onLoadFinishedArgs = Array.prototype.slice.call(arguments);
         });
         this.setOneShotCallback("onError", function(message, stack) {
@@ -284,7 +206,6 @@ ghostdriver.Session = function(desiredCapabilities) {
             checkLoadingFinished = function() {
                 if (!_isLoading()) {               //< page finished loading
                     _log.debug("_execFuncAndWaitForLoadDecorator", "Page Loading in Session: false");
-
                     thisPage.resetOneShotCallbacks();
 
                     if (onLoadFinishedArgs !== null) {
@@ -398,29 +319,11 @@ ghostdriver.Session = function(desiredCapabilities) {
             }
         }
 		
-		//ADDED BY MIN ZHANG
-		page.resources = [];
-		page.onResourceRequested = function (requestData, networkRequest) {
-			if ( requestData ) {
-				page.resources[requestData.id] = {
-					request: requestData,
-					startReply: null,
-					endReply: null
-				};
-				//_log.info("[MIN]" + requestData.id);
-			}
-		};
-		page.onResourceReceived = function (response) {
-			if ( response ) {
-				if (response.stage === 'start') {
-					page.resources[response.id].startReply = response;
-				}
-				if (response.stage === 'end') {
-					page.resources[response.id].endReply = response;
-				}
-				//_log.info("[MIN]-" + response.id);
-			}
-		};
+		//++ADDED BY MIN ZHANG
+		page = harhelper.setCallbackListeners(page);
+		page.currentStep = 0;
+		page.startTime = new Date();
+		//--ADDED BY MIN ZHANG
 
         page.onConsoleMessage = function(msg) { _log.debug("page.onConsoleMessage", msg); };
 
