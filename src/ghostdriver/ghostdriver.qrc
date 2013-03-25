@@ -17,6 +17,7 @@
         <file>third_party/console++.js</file>
         <file>third_party/parseuri.js</file>
         <file>third_party/uuid.js</file>
+		<file>third_party/harhelper.js</file>
         <file>third_party/webdriver-atoms/active_element.js</file>
         <file>third_party/webdriver-atoms/clear.js</file>
         <file>third_party/webdriver-atoms/clear_local_storage.js</file>
