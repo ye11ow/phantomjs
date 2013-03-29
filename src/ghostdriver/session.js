@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 var ghostdriver = ghostdriver || {};
 
+
 ghostdriver.Session = function(desiredCapabilities) {
     // private:
     const
@@ -39,10 +40,6 @@ ghostdriver.Session = function(desiredCapabilities) {
         },
         ONE_SHOT_POSTFIX : "OneShot"
     };
-	//++ADDED BY MIN ZHANG
-	var fs = require("fs");
-	var harhelper = require("./third_party/harhelper.js");
-	//--ADDED BY MIN ZHANG
     var
     _defaultCapabilities = {    // TODO - Actually try to match the "desiredCapabilities" instead of ignoring them
         "browserName" : "phantomjs",
@@ -109,7 +106,8 @@ ghostdriver.Session = function(desiredCapabilities) {
     _capsPageSettingsPref = "phantomjs.page.settings.",
     _pageSettings = {},
     _log = ghostdriver.logger.create("Session [" + _id + "]"),
-    k, settingKey;
+    k, settingKey,
+    harhelper = require("./third_party/harhelper.js");//++ADDED BY MIN ZHANG
 
     // Searching for `phantomjs.settings.*` in the Desired Capabilities and merging with the Negotiated Capabilities
     // Possible values: @see https://github.com/ariya/phantomjs/wiki/API-Reference#wiki-webpage-settings.
@@ -157,17 +155,17 @@ ghostdriver.Session = function(desiredCapabilities) {
         // Register Callbacks to grab any async event we are interested in
         this.setOneShotCallback("onLoadFinished", function (status) {
             _log.debug("_execFuncAndWaitForLoadDecorator", "onLoadFinished: " + status);
+
 			//++ADDED BY MIN ZHANG
 			var page = _windows[_currentWindowHandle];
-			page.endTime = new Date();
-			har = harhelper.createHAR(page);
-			fs.write( "C:\\" + page.currentStep + ".har", JSON.stringify(har, undefined, 4), "w");
-			page.startTime = null;
-			page.endTime = null;
-			page.resources = [];
-			page.currentStep++;
-			_log.info("[MIN]" + page.url + " loading finished ONESHOT");
-			//--ADDED BY MIN ZHANG
+			page.endTime = new Date();//TODO end time may not be here
+            _log.info("on load finished before render");
+			page.render("c:\\finished1.png");
+            _log.info("on load finished after render");
+            page.onFinishedRender = page.renderBase64("png");
+			_log.info("on load finished after base64");
+            harhelper.resetAttampts(page);
+            //--ADDED BY MIN ZHANG
             onLoadFinishedArgs = Array.prototype.slice.call(arguments);
         });
         this.setOneShotCallback("onError", function(message, stack) {
@@ -204,7 +202,13 @@ ghostdriver.Session = function(desiredCapabilities) {
             loadingStartedTs = new Date().getTime();
 
             checkLoadingFinished = function() {
+				
                 if (!_isLoading()) {               //< page finished loading
+                    //++ADDED BY MIN ZHANG
+                    page = _windows[_currentWindowHandle];
+                    harhelper.saveHar(page, "c:\\" );
+                    harhelper.stepEnds(page);
+                    //--ADDED BY MIN ZHANG
                     _log.debug("_execFuncAndWaitForLoadDecorator", "Page Loading in Session: false");
                     thisPage.resetOneShotCallbacks();
 
@@ -320,7 +324,7 @@ ghostdriver.Session = function(desiredCapabilities) {
         }
 		
 		//++ADDED BY MIN ZHANG
-		page = harhelper.setCallbackListeners(page);
+		harhelper.setCallbackListeners(page);
 		page.currentStep = 0;
 		page.startTime = new Date();
 		//--ADDED BY MIN ZHANG
@@ -343,8 +347,13 @@ ghostdriver.Session = function(desiredCapabilities) {
             if (_windows[wHandle].loading) {
                 return true;
             }
+            //++ADDED BY MIN ZHANG
+            else {
+                if ( harhelper.ajaxLoading(_windows[wHandle]) == true ) return true;
+            }
+            //--ADDED BY MIN ZHANG
         }
-
+        harhelper.resetAttampts(_windows[wHandle]);//++ADDED BY MIN ZHANG
         // If we arrived here, means that no window is loading
         return false;
     },

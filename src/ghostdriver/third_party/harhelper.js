@@ -1,4 +1,10 @@
-exports.createHAR = function (page) {
+//  private
+var fs = require("fs");
+const   MAX_ATTAMPT = 10,
+        ATTAMPT_TIMEOUT = 50;
+
+
+function createHAR (page) {
     var entries = [];
 	if ( !page.startTime ) page.startTime = page.endTime;
     page.resources.forEach(function (resource) {
@@ -7,7 +13,9 @@ exports.createHAR = function (page) {
             endReply = resource.endReply;
 
         if (!request || !startReply || !endReply) {
-            return;
+            if (!startReply && !endReply) {
+                return true;
+            }
         }
 
         // Exclude Data URI from HAR file because
@@ -49,8 +57,8 @@ exports.createHAR = function (page) {
                 dns: -1,
                 connect: -1,
                 send: 0,
-                wait: startReply.time - request.time,
-                receive: endReply.time - startReply.time,
+                wait: (startReply ? startReply.time - request.time : -1),
+                receive: (startReply ? endReply.time - startReply.time : -1),
                 ssl: -1
             },
             pageref: page.url
@@ -76,12 +84,15 @@ exports.createHAR = function (page) {
             entries: entries
         }
     };
-};
+}
+
+//  public
 
 /*
-	Setting the callback listeners
-	onResourceRequested
-	onResourceReceived
+*	Setting the callback listeners
+*   @param page
+*	onResourceRequested
+*	onResourceReceived
 */
 exports.setCallbackListeners = function(page) {
 	page.resources = [];
@@ -102,9 +113,53 @@ exports.setCallbackListeners = function(page) {
 			}
 			if (response.stage === 'end') {
 				page.resources[response.id].endReply = response;
+                //_log.info("[MIN]-" + response.id);
 			}
-			//_log.info("[MIN]-" + response.id);
+			
 		}
 	};
 	return page;
+};
+
+/*
+*   Screenshot comparison
+*   @param page
+*   
+*/
+exports.ajaxLoading = function(page) {
+    //_log.info("[MIN]ATTAMPT: " + _windows[wHandle].attampt);
+    //_log.info("[MIN]wHandle: " + wHandle);
+    if ( page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0 ) {
+        var render = page.renderBase64("png");
+        if ( page.onFinishedRender.length != render.length ) {
+            page.onFinishedRender = render;
+            page.attampt = MAX_ATTAMPT;
+        }
+        else {
+            page.attampt--;
+            page.attamptTimeout--;
+        }
+        return true;
+    }
+}
+
+/*
+*   Reset ATTAMPT and ATTAMPT_TIMEOUT
+*   @param page
+*   
+*/
+exports.resetAttampts = function(page) {
+    page.attampt = MAX_ATTAMPT;
+    page.attamptTimeout = ATTAMPT_TIMEOUT;
+}
+
+/*
+*   Saving the har to the file system.
+*   @param page
+*   @param location: location must end with '\'
+*
+*/
+exports.saveHar = function( page, location ) {
+    har = createHAR(page);
+    fs.write( location + page.currentStep + ".har", JSON.stringify(har, undefined, 4), "w");
 };
