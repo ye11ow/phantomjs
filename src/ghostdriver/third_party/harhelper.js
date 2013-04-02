@@ -1,19 +1,23 @@
 //  private
 var fs = require("fs"),
-    har = new Object();
-const   MAX_ATTAMPT = 10,
-        ATTAMPT_TIMEOUT = 50;
+    har = {};
+    MAX_ATTAMPT = 10,
+    ATTAMPT_TIMEOUT = 50;
 
-    har.log = {
-        version: '1.2',
-        creator: {
-            name: "PhantomJS",
-            version: phantom.version.major + '.' + phantom.version.minor +
-                '.' + phantom.version.patch
-        },
-        pages: [],
-        entries: []
-    }
+har.log = {
+    version: '1.2', 
+    creator: {
+        name: "PhantomJS",
+        version: phantom.version.major + '.' + phantom.version.minor +
+            '.' + phantom.version.patch
+    },
+    browser: {
+        name: "QtWetkit",
+        version: "4.8"
+    },
+    pages: [],
+    entries: []
+};
 
 function createHar(page) {
     har.log.pages.push({
@@ -27,43 +31,48 @@ function createHar(page) {
             _firstByte: page.timings.firstByte
         }
     });
-    page.resources.forEach( function (resource) {
+    page.resources.forEach(function (resource) {
         var request = resource.request,
             startReply = resource.startReply,
-            endReply = resource.endReply;
+            endReply = resource.endReply,
+            size = 0;
 
-        if (!request || !startReply || !endReply) {
-            return;
+        size += (startReply ? startReply.bodySize : 0 );
+        size += (endReply ? endReply.bodySize : 0 );
+
+        if (!request || request.url.match(/(^data:image\/.*)/i)) return;
+        else if (!startReply && !endReply) return;
+        else if (!startReply || !endReply){
+            _log.info(JSON.stringify(resource, undefined, 2));
         }
-        if (request.url.match(/(^data:image\/.*)/i)) {
-            return;
-        }
-        har.log.entries.push({
+        var entry = {
+            pageref: page.currentStep + ":" + page.url,
             startedDateTime: request.time.toISOString(),
-            time: endReply.time - request.time,
+            time: (endReply ? endReply.time - request.time : -1 ),
             request: {
                 method: request.method,
                 url: request.url,
                 httpVersion: "HTTP/1.1",
-                cookies: [],
+                cookies: [],//cookies [array] - List of cookie objects.
                 headers: request.headers,
-                queryString: [],
-                headersSize: -1,
-                bodySize: -1
+                queryString: [],//queryString [array] - List of query parameter objects.
+                postData: {},//postData [object, optional] - Posted data info.
+                headersSize: request.headerSize,
+                bodySize: -1//bodySize [number] - Size of the request body (POST data payload) in bytes. Set to -1 if the info is not available.
             },
             response: {
-                status: endReply.status,
-                statusText: endReply.statusText,
+                status: (endReply ? endReply.status : startReply.status),
+                statusText: (endReply ? endReply.statusText : startReply.statusText),
                 httpVersion: "HTTP/1.1",
-                cookies: [],
-                headers: endReply.headers,
-                redirectURL: "",
-                headersSize: -1,
-                bodySize: startReply.bodySize + endReply.bodySize,
+                cookies: [],//cookies [array] - List of cookie objects.
+                headers: (endReply ? endReply.headers : startReply.headers),
                 content: {
-                    size: startReply.bodySize,
-                    mimeType: endReply.contentType
-                }
+                    size: size,
+                    mimeType: (endReply ? endReply.contentType : startReply.contentType)
+                },
+                redirectURL: "",//Redirection target URL from the Location response header.
+                headersSize: (startReply ? startReply.headerSize : -1),
+                bodySize: size//bodySize [number] - Size of the received response body in bytes. Set to zero in case of responses coming from the cache (304).
             },
             cache: {},
             timings: {
@@ -72,11 +81,13 @@ function createHar(page) {
                 connect: -1,
                 send: 0,
                 wait: (startReply ? startReply.time - request.time : -1),
-                receive: (startReply ? endReply.time - startReply.time : -1),
+                receive: (startReply&&endReply ? endReply.time - startReply.time : -1),
                 ssl: -1
             },
-            pageref: page.currentStep + ":" + page.url
-        });
+            serverIPAddress: "",//serverIPAddress [string, optional] (new in 1.2) - IP address of the server that was connected (result of DNS resolution).
+            connection: ""//connection [string, optional] (new in 1.2) - Unique ID of the parent TCP/IP connection, can be the client port number. Note that a port number doesn't have to be unique identifier in cases where the port is shared for more connections. If the port isn't available for the application, any other unique connection ID can be used instead (e.g. connection index). Leave out this field if the application doesn't support this info.
+        };
+        har.log.entries.push( entry );
     });
 }
 
@@ -97,13 +108,12 @@ exports.setCallbackListeners = function(page) {
     page.timings = [];
 	page.onResourceRequested = function (requestData, networkRequest) {
 		if ( requestData ) {
-            if ( page.timings.start == null ) page.timings.start = new Date();//TODO start time here?
+            if (page.timings.start == null) page.timings.start = new Date();//TODO start time here?
 			page.resources[requestData.id] = {
 				request: requestData,
 				startReply: null,
 				endReply: null
 			};
-			
 		}
 	};
 	page.onResourceReceived = function (response) {
@@ -114,7 +124,7 @@ exports.setCallbackListeners = function(page) {
 			}
 			if (response.stage === 'end') {
 				page.resources[response.id].endReply = response;
-                _log.info("[MIN]-" + response.id + ": from cache? " + response.fromCache);
+                //_log.info("[MIN]-" + response.id + ": from cache? " + response.fromCache);
 			}
 			
 		}

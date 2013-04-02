@@ -221,8 +221,11 @@ QNetworkReply *NetworkAccessManager::createRequest(Operation op, const QNetworkR
     m_idCounter++;
 
     QVariantList headers;
+    int headerSize = 0;//++ADDED BY MIN ZHANG 
     foreach (QByteArray headerName, req.rawHeaderList()) {
         QVariantMap header;
+        headerSize += headerName.size();//++ADDED BY MIN ZHANG 
+        headerSize += req.rawHeader(headerName).size();//++ADDED BY MIN ZHANG 
         header["name"] = QString::fromUtf8(headerName);
         header["value"] = QString::fromUtf8(req.rawHeader(headerName));
         headers += header;
@@ -233,6 +236,7 @@ QNetworkReply *NetworkAccessManager::createRequest(Operation op, const QNetworkR
     data["url"] = url.data();
     data["method"] = toString(op);
     data["headers"] = headers;
+    data["headerSize"] = headerSize;//++ADDED BY MIN ZHANG 
     data["time"] = QDateTime::currentDateTime();
 
     JsNetworkRequest jsNetworkRequest(&req, this);
@@ -294,8 +298,11 @@ void NetworkAccessManager::handleStarted()
     m_started += reply;
     
     QVariantList headers;
+    int headerSize = 0;//++ADDED BY MIN ZHANG 
     foreach (QByteArray headerName, reply->rawHeaderList()) {
         QVariantMap header;
+        headerSize += headerName.size();//++ADDED BY MIN ZHANG 
+        headerSize += reply->rawHeader(headerName).size();//++ADDED BY MIN ZHANG 
         header["name"] = QString::fromUtf8(headerName);
         header["value"] = QString::fromUtf8(reply->rawHeader(headerName));
         headers += header;
@@ -311,6 +318,7 @@ void NetworkAccessManager::handleStarted()
     data["bodySize"] = reply->size();
     data["redirectURL"] = reply->header(QNetworkRequest::LocationHeader);
     data["headers"] = headers;
+    data["headerSize"] = headerSize;//++ADDED BY MIN ZHANG 
     data["time"] = QDateTime::currentDateTime();
 
     emit resourceReceived(data);
