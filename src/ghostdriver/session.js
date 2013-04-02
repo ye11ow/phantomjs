@@ -158,12 +158,13 @@ ghostdriver.Session = function(desiredCapabilities) {
 
 			//++ADDED BY MIN ZHANG
 			var page = _windows[_currentWindowHandle];
-			page.endTime = new Date();//TODO end time may not be here
-            _log.info("on load finished before render");
-			page.render("c:\\finished1.png");
-            _log.info("on load finished after render");
-            page.onFinishedRender = page.renderBase64("png");
-			_log.info("on load finished after base64");
+			page.timings.onLoad = new Date() - page.timings.start;
+            page.timings.end = page.timings.onLoad;
+            //_log.info("on load finished before render");
+			//page.render("c:\\finished1.png");
+            _log.info("["+page.title+"]on load finished after render");
+            page.onFinishedRender = page.renderBase64("gif");
+            _log.info("["+page.title+"]on load finished after base64");
             harhelper.resetAttampts(page);
             //--ADDED BY MIN ZHANG
             onLoadFinishedArgs = Array.prototype.slice.call(arguments);
@@ -206,8 +207,8 @@ ghostdriver.Session = function(desiredCapabilities) {
                 if (!_isLoading()) {               //< page finished loading
                     //++ADDED BY MIN ZHANG
                     page = _windows[_currentWindowHandle];
-                    harhelper.saveHar(page, "c:\\" );
                     harhelper.stepEnds(page);
+                    harhelper.saveHar(page, "c:\\" );
                     //--ADDED BY MIN ZHANG
                     _log.debug("_execFuncAndWaitForLoadDecorator", "Page Loading in Session: false");
                     thisPage.resetOneShotCallbacks();
@@ -326,7 +327,6 @@ ghostdriver.Session = function(desiredCapabilities) {
 		//++ADDED BY MIN ZHANG
 		harhelper.setCallbackListeners(page);
 		page.currentStep = 0;
-		page.startTime = new Date();
 		//--ADDED BY MIN ZHANG
 
         page.onConsoleMessage = function(msg) { _log.debug("page.onConsoleMessage", msg); };
