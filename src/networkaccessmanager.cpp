@@ -240,6 +240,7 @@ QNetworkReply *NetworkAccessManager::createRequest(Operation op, const QNetworkR
 
     // Pass duty to the superclass - Nothing special to do here (yet?)
     QNetworkReply *reply = QNetworkAccessManager::createRequest(op, req, outgoingData);
+    reply->setReadBufferSize(0);//++ADDED BY MIN ZHANG
 
     // reparent jsNetworkRequest to make sure that it will be destroyed with QNetworkReply
     jsNetworkRequest.setParent(reply);
@@ -355,8 +356,10 @@ void NetworkAccessManager::handleFinished(QNetworkReply *reply, const QVariant &
     data["stage"] = "end";
     data["id"] = m_ids.value(reply);
     data["url"] = reply->url().toEncoded().data();
+    data["fromCache"] = reply->attribute(QNetworkRequest::SourceIsFromCacheAttribute).toBool();//++ADDED BY Min Zhang
     data["status"] = status;
     data["statusText"] = statusText;
+    data["bodySize"] = reply->size();//++ADDED BY MIN ZHANG
     data["contentType"] = reply->header(QNetworkRequest::ContentTypeHeader);
     data["redirectURL"] = reply->header(QNetworkRequest::LocationHeader);
     data["headers"] = headers;
