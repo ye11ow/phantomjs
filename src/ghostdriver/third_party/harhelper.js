@@ -1,3 +1,7 @@
+//  debug
+var DEBUG_RESOURSE_LIST = false,
+    DEBUG_STEP = true,
+    DEBUG_RENDER = false;
 //  private
 var fs = require("fs"),
     har = {};
@@ -43,7 +47,7 @@ function createHar(page) {
         if (!request || request.url.match(/(^data:image\/.*)/i)) return;
         else if (!startReply && !endReply) return;
         else if (!startReply || !endReply){
-            _log.info(JSON.stringify(resource, undefined, 2));
+            //_log.info(JSON.stringify(resource, undefined, 2));
         }
         var entry = {
             pageref: page.currentStep + ":" + page.url,
@@ -91,6 +95,20 @@ function createHar(page) {
     });
 }
 
+/**
+ *  Reset page
+ *
+ *  @param page
+ */
+function resetPage(page) {
+    page.onFinishedRender = null;
+    page.timings = [];
+    page.timings.start = null;
+    page.timings.firstByte = null;
+    page.inAjax = false;
+    page.resources = [];
+}
+
 
 //  public
 
@@ -104,10 +122,12 @@ function createHar(page) {
  *  onCallback
  */
 exports.setCallbackListeners = function(page) {
+    DEBUG_STEP && console.log("[MIN]set call back listener");
 	page.resources = [];
     page.timings = [];
 	page.onResourceRequested = function (requestData, networkRequest) {
 		if ( requestData ) {
+            DEBUG_RESOURSE_LIST && console.log("[MIN]Request:  " + requestData.id);
             if (page.timings.start == null) page.timings.start = new Date();//TODO start time here?
 			page.resources[requestData.id] = {
 				request: requestData,
@@ -118,18 +138,19 @@ exports.setCallbackListeners = function(page) {
 	};
 	page.onResourceReceived = function (response) {
 		if ( response ) {
+            DEBUG_RESOURSE_LIST && console.log("[MIN]Response: " + response.id);
             if ( page.timings.firstByte == null ) page.timings.firstByte = new Date() - page.timings.start;
 			if (response.stage === 'start') {
 				page.resources[response.id].startReply = response;
 			}
 			if (response.stage === 'end') {
 				page.resources[response.id].endReply = response;
-                //_log.info("[MIN]-" + response.id + ": from cache? " + response.fromCache);
 			}
 			
 		}
 	};
     page.onInitialized = function() {
+        DEBUG_STEP && console.log("[MIN]page initialized");
         page.evaluate( function() {
             document.addEventListener('DOMContentLoaded', function() {
                 window.callPhantom('DOMContentLoaded');
@@ -157,6 +178,8 @@ exports.setCallbackListeners = function(page) {
  */
 exports.ajaxLoading = function(page) {
     //_log.info("[MIN]ATTAMPT: " + page.attampt);
+    DEBUG_STEP && !page.inAjax && console.log("[MIN]ajax loading check");
+    page.inAjax = true;
     if ( page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0 ) {
         var render = page.renderBase64("gif");
         if ( page.onFinishedRender.length != render.length ) {//TODO compare conteng instead of length
@@ -194,13 +217,9 @@ exports.saveHar = function( page, location ) {
 };
 
 exports.stepEnds = function ( page ) {
-    _log.info("[MIN]page finished loading");
+    DEBUG_STEP && console.log("[MIN]step: " + page.url + " ended");
     //page.render("c:\\Finished2.png");
     createHar(page);
-    page.onFinishedRender = null;
-    page.timings = [];
-    page.timings.start = null;
-    page.timings.firstByte = null;
-    page.resources = [];
+    resetPage(page);
     page.currentStep++;
 }

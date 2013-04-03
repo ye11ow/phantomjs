@@ -138,7 +138,6 @@ ghostdriver.Session = function(desiredCapabilities) {
             thisPage = this,
             onLoadFinishedArgs = null,
             onErrorArgs = null;
-
         // Normalize "execTypeOpt" value
         if (typeof(execTypeOpt) === "undefined" ||
             (execTypeOpt !== "apply" && execTypeOpt !== "eval")) {
@@ -160,11 +159,8 @@ ghostdriver.Session = function(desiredCapabilities) {
 			var page = _windows[_currentWindowHandle];
 			page.timings.onLoad = new Date() - page.timings.start;
             page.timings.end = page.timings.onLoad;
-            //_log.info("on load finished before render");
 			//page.render("c:\\finished1.png");
-            _log.info("["+page.title+"]on load finished after render");
             page.onFinishedRender = page.renderBase64("gif");
-            _log.info("["+page.title+"]on load finished after base64");
             harhelper.resetAttampts(page);
             //--ADDED BY MIN ZHANG
             onLoadFinishedArgs = Array.prototype.slice.call(arguments);
