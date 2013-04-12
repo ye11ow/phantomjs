@@ -57,10 +57,7 @@ function createHar(page) {
                 method: request.method,
                 url: request.url,
                 httpVersion: "HTTP/1.1",
-                cookies: [],//cookies [array] - List of cookie objects.
                 headers: request.headers,
-                queryString: [],//queryString [array] - List of query parameter objects.
-                postData: {},//postData [object, optional] - Posted data info.
                 headersSize: request.headerSize,
                 bodySize: -1//bodySize [number] - Size of the request body (POST data payload) in bytes. Set to -1 if the info is not available.
             },
@@ -68,28 +65,18 @@ function createHar(page) {
                 status: (endReply ? endReply.status : startReply.status),
                 statusText: (endReply ? endReply.statusText : startReply.statusText),
                 httpVersion: "HTTP/1.1",
-                cookies: [],//cookies [array] - List of cookie objects.
                 headers: (endReply ? endReply.headers : startReply.headers),
                 content: {
                     size: size,
                     mimeType: (endReply ? endReply.contentType : startReply.contentType)
                 },
-                redirectURL: "",//Redirection target URL from the Location response header.
                 headersSize: (startReply ? startReply.headerSize : -1),
                 bodySize: size//bodySize [number] - Size of the received response body in bytes. Set to zero in case of responses coming from the cache (304).
             },
-            cache: {},
             timings: {
-                blocked: 0,
-                dns: -1,
-                connect: -1,
-                send: 0,
                 wait: (startReply ? startReply.time - request.time : -1),
-                receive: (startReply&&endReply ? endReply.time - startReply.time : -1),
-                ssl: -1
-            },
-            serverIPAddress: "",//serverIPAddress [string, optional] (new in 1.2) - IP address of the server that was connected (result of DNS resolution).
-            connection: ""//connection [string, optional] (new in 1.2) - Unique ID of the parent TCP/IP connection, can be the client port number. Note that a port number doesn't have to be unique identifier in cases where the port is shared for more connections. If the port isn't available for the application, any other unique connection ID can be used instead (e.g. connection index). Leave out this field if the application doesn't support this info.
+                receive: (startReply&&endReply ? endReply.time - startReply.time : -1)
+            }
         };
         har.log.entries.push( entry );
     });
@@ -109,6 +96,17 @@ function resetPage(page) {
     page.resources = [];
 }
 
+/*
+function sendHar(har) {
+    var getPage = require('webpage').create(),
+        server = "http://phanium.w3.opensmartcloud.com/home/action/postHar";
+        //server = "http://localhost:3000/home/action/postHar";
+    getPage.customHeaders = {'Content-Type': 'application/json; charset=UTF-8'};
+    data = JSON.stringify(har, undefined, 2);
+    getPage.open(server, 'post', data, function (status) {
+    });
+}
+*/
 
 //  public
 
@@ -212,8 +210,11 @@ exports.resetAttampts = function(page) {
 *   @param location: location must end with '\'
 *
 */
-exports.saveHar = function( page, location ) {
-    fs.write( location + "AllInOne.har", JSON.stringify(har, undefined, 2), "w");
+exports.saveHar = function(page) {
+    fs.write("AllInOne.har", JSON.stringify(har, undefined, 2), "w");
+    //sendHar(har);
+    //har.log.pages = [];
+    //har.log.entries = [];
 };
 
 exports.stepEnds = function ( page ) {

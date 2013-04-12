@@ -204,7 +204,7 @@ ghostdriver.Session = function(desiredCapabilities) {
                     //++ADDED BY MIN ZHANG
                     page = _windows[_currentWindowHandle];
                     harhelper.stepEnds(page);
-                    harhelper.saveHar(page, "c:\\" );
+                    harhelper.saveHar(page);
                     //--ADDED BY MIN ZHANG
                     _log.debug("_execFuncAndWaitForLoadDecorator", "Page Loading in Session: false");
                     thisPage.resetOneShotCallbacks();
@@ -513,8 +513,8 @@ ghostdriver.Session = function(desiredCapabilities) {
     // Particularly, create the first empty page/window.
     _init();
 
-    _log.info("CONSTRUCTOR", "Desired Capabilities: " + JSON.stringify(desiredCapabilities));
-    _log.info("CONSTRUCTOR", "Negotiated Capabilities: " + JSON.stringify(_negotiatedCapabilities));
+    //_log.info("CONSTRUCTOR", "Desired Capabilities: " + JSON.stringify(desiredCapabilities));
+    //_log.info("CONSTRUCTOR", "Negotiated Capabilities: " + JSON.stringify(_negotiatedCapabilities));
 
     // public:
     return {
