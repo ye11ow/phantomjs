@@ -57,7 +57,9 @@ function createHar(page) {
                 method: request.method,
                 url: request.url,
                 httpVersion: "HTTP/1.1",
+                cookies: [],//cookies [array] - List of cookie objects.
                 headers: request.headers,
+                queryString: [],//queryString [array] - List of query parameter objects.
                 headersSize: request.headerSize,
                 bodySize: -1//bodySize [number] - Size of the request body (POST data payload) in bytes. Set to -1 if the info is not available.
             },
@@ -65,17 +67,25 @@ function createHar(page) {
                 status: (endReply ? endReply.status : startReply.status),
                 statusText: (endReply ? endReply.statusText : startReply.statusText),
                 httpVersion: "HTTP/1.1",
+                cookies: [],//cookies [array] - List of cookie objects.
                 headers: (endReply ? endReply.headers : startReply.headers),
                 content: {
                     size: size,
                     mimeType: (endReply ? endReply.contentType : startReply.contentType)
                 },
+                redirectURL: "",//Redirection target URL from the Location response header.
                 headersSize: (startReply ? startReply.headerSize : -1),
                 bodySize: size//bodySize [number] - Size of the received response body in bytes. Set to zero in case of responses coming from the cache (304).
             },
+            cache: {},
             timings: {
+                blocked: 0,
+                dns: -1,
+                connect: -1,
+                send: 0,
                 wait: (startReply ? startReply.time - request.time : -1),
-                receive: (startReply&&endReply ? endReply.time - startReply.time : -1)
+                receive: (startReply&&endReply ? endReply.time - startReply.time : -1),
+                ssl: -1
             }
         };
         har.log.entries.push( entry );
