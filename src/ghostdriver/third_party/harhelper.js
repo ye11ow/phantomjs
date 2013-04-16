@@ -1,7 +1,7 @@
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
-    DEBUG_RENDER = false;
+    DEBUG_RENDER = true;
 //  private
 var fs = require("fs"),
     har = {};
@@ -25,7 +25,7 @@ har.log = {
 
 function createHar(page) {
     har.log.pages.push({
-        startedDateTime: page.timings.start.toISOString(),
+        startedDateTime: (page.timings.start ? page.timings.start.toISOString() : -1),
         id: page.currentStep + ":" + page.url,
         title: page.title,
         pageTimings: {
@@ -106,18 +106,6 @@ function resetPage(page) {
     page.resources = [];
 }
 
-/*
-function sendHar(har) {
-    var getPage = require('webpage').create(),
-        server = "http://phanium.w3.opensmartcloud.com/home/action/postHar";
-        //server = "http://localhost:3000/home/action/postHar";
-    getPage.customHeaders = {'Content-Type': 'application/json; charset=UTF-8'};
-    data = JSON.stringify(har, undefined, 2);
-    getPage.open(server, 'post', data, function (status) {
-    });
-}
-*/
-
 //  public
 
 /**
@@ -130,13 +118,18 @@ function sendHar(har) {
  *  onCallback
  */
 exports.setCallbackListeners = function(page) {
-    DEBUG_STEP && console.log("[MIN]set call back listener");
 	page.resources = [];
     page.timings = [];
+    page.viewportSize = { width: 1280, height: 960 };
 	page.onResourceRequested = function (requestData, networkRequest) {
 		if ( requestData ) {
-            DEBUG_RESOURSE_LIST && console.log("[MIN]Request:  " + requestData.id);
-            if (page.timings.start == null) page.timings.start = new Date();//TODO start time here?
+            DEBUG_RESOURSE_LIST && console.log("Request:  " + requestData.id);
+            if (page.timings.start == null) {
+                page.timings.start = new Date();//TODO start time here?
+                DEBUG_STEP && console.log("Step " + page.currentStep + " start");
+                DEBUG_STEP && console.log("URL: " + page.url);
+                DEBUG_RENDER && page.render("c:\\" + page.currentStep + "start.png");
+            }
 			page.resources[requestData.id] = {
 				request: requestData,
 				startReply: null,
@@ -146,7 +139,7 @@ exports.setCallbackListeners = function(page) {
 	};
 	page.onResourceReceived = function (response) {
 		if ( response ) {
-            DEBUG_RESOURSE_LIST && console.log("[MIN]Response: " + response.id);
+            DEBUG_RESOURSE_LIST && console.log("Response: " + response.id);
             if ( page.timings.firstByte == null ) page.timings.firstByte = new Date() - page.timings.start;
 			if (response.stage === 'start') {
 				page.resources[response.id].startReply = response;
@@ -158,7 +151,6 @@ exports.setCallbackListeners = function(page) {
 		}
 	};
     page.onInitialized = function() {
-        DEBUG_STEP && console.log("[MIN]page initialized");
         page.evaluate( function() {
             document.addEventListener('DOMContentLoaded', function() {
                 window.callPhantom('DOMContentLoaded');
@@ -186,7 +178,7 @@ exports.setCallbackListeners = function(page) {
  */
 exports.ajaxLoading = function(page) {
     //_log.info("[MIN]ATTAMPT: " + page.attampt);
-    DEBUG_STEP && !page.inAjax && console.log("[MIN]ajax loading check");
+    DEBUG_STEP && !page.inAjax && console.log("Ajax checking");
     page.inAjax = true;
     if ( page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0 ) {
         var render = page.renderBase64("gif");
@@ -228,8 +220,8 @@ exports.saveHar = function(page) {
 };
 
 exports.stepEnds = function ( page ) {
-    DEBUG_STEP && console.log("[MIN]step: " + page.url + " ended");
-    //page.render("c:\\Finished2.png");
+    DEBUG_STEP && console.log("Step " + page.currentStep + " ended");
+    DEBUG_RENDER && page.render("c:\\" + page.currentStep + ".png");
     createHar(page);
     resetPage(page);
     page.currentStep++;
