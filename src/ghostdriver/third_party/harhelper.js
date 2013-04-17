@@ -1,14 +1,14 @@
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
-    DEBUG_AJAX = true,
-    DEBUG_RENDER = true;
+    DEBUG_AJAX = false,
+    DEBUG_RENDER = false;
 
 //  private
 var fs = require("fs"),
     har = {},
     MAX_ATTAMPT = 10,
-    ATTAMPT_TIMEOUT = 50;
+    ATTAMPT_TIMEOUT = 30;
 
 har.log = {
     version: '1.2', 
@@ -131,7 +131,6 @@ exports.setCallbackListeners = function(page) {
             if (page.timings.start == null) {
                 page.timings.start = new Date();//TODO start time here?
                 DEBUG_STEP && console.log("Step " + page.currentStep + " start");
-                DEBUG_STEP && console.log("URL: " + page.url);
                 DEBUG_RENDER && page.render("c:\\" + page.currentStep + "start.png");
             }
 			page.resources[requestData.id] = {
@@ -195,6 +194,7 @@ exports.ajaxLoading = function(page) {
             page.timings.end = new Date() - page.timings.start - 50;//interval = 100
             page.onFinishedRender = render;
             page.attampt = MAX_ATTAMPT;
+            page.attamptTimeout--;
         }
         else {
             page.attampt--;
@@ -234,7 +234,7 @@ exports.saveHar = function(page) {
 };
 
 exports.stepEnds = function ( page ) {
-    DEBUG_STEP && console.log("Step " + page.currentStep + " ended");
+    DEBUG_STEP && console.log("Step " + page.currentStep + ": " + page.url +" ended");
     DEBUG_RENDER && page.render("c:\\" + page.currentStep + ".png");
     createHar(page);
     resetPage(page);
