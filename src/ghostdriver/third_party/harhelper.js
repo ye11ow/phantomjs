@@ -1,10 +1,12 @@
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
+    DEBUG_AJAX = true,
     DEBUG_RENDER = true;
+
 //  private
 var fs = require("fs"),
-    har = {};
+    har = {},
     MAX_ATTAMPT = 10,
     ATTAMPT_TIMEOUT = 50;
 
@@ -121,6 +123,8 @@ exports.setCallbackListeners = function(page) {
 	page.resources = [];
     page.timings = [];
     page.viewportSize = { width: 1280, height: 960 };
+    page.attampt = MAX_ATTAMPT;
+    page.attamptTimeout = ATTAMPT_TIMEOUT;
 	page.onResourceRequested = function (requestData, networkRequest) {
 		if ( requestData ) {
             DEBUG_RESOURSE_LIST && console.log("Request:  " + requestData.id);
@@ -147,7 +151,6 @@ exports.setCallbackListeners = function(page) {
 			if (response.stage === 'end') {
 				page.resources[response.id].endReply = response;
 			}
-			
 		}
 	};
     page.onInitialized = function() {
@@ -177,13 +180,18 @@ exports.setCallbackListeners = function(page) {
  *   
  */
 exports.ajaxLoading = function(page) {
-    //_log.info("[MIN]ATTAMPT: " + page.attampt);
     DEBUG_STEP && !page.inAjax && console.log("Ajax checking");
     page.inAjax = true;
-    if ( page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0 ) {
-        var render = page.renderBase64("gif");
+    if (!page.onFinishedRender) {
+        page.onFinishedRender = page.renderBase64("png");
+        if (!page.onFinishedRender) return false;
+        return true;
+    }
+    DEBUG_AJAX && console.log("Attampt: " + page.attampt + "; Glocal Attampt:" + page.attamptTimeout + "; Render: " + page.onFinishedRender.length );
+    if (page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0) {
+        var render = page.renderBase64("png");
         if ( page.onFinishedRender.length != render.length ) {//TODO compare conteng instead of length
-            _log.info("before: " + page.onFinishedRender.length + "| after: " + render.length);
+            DEBUG_AJAX && console.log("Length Changed: " + (page.onFinishedRender.length - render.length));            
             page.timings.end = new Date() - page.timings.start - 50;//interval = 100
             page.onFinishedRender = render;
             page.attampt = MAX_ATTAMPT;
@@ -194,7 +202,16 @@ exports.ajaxLoading = function(page) {
         }
         return true;
     }
-}
+};
+
+exports.loadEnds = function(page) {
+    DEBUG_STEP && console.log("Load Ends");
+    page.timings.onLoad = new Date() - page.timings.start;
+    page.timings.end = page.timings.onLoad;
+    page.onFinishedRender = page.renderBase64("png");
+    page.attampt = MAX_ATTAMPT;
+    page.attamptTimeout = ATTAMPT_TIMEOUT;
+};
 
 /*
 *   Reset ATTAMPT and ATTAMPT_TIMEOUT
@@ -204,7 +221,7 @@ exports.ajaxLoading = function(page) {
 exports.resetAttampts = function(page) {
     page.attampt = MAX_ATTAMPT;
     page.attamptTimeout = ATTAMPT_TIMEOUT;
-}
+};
 
 /*
 *   Saving the har to the file system.
@@ -214,9 +231,6 @@ exports.resetAttampts = function(page) {
 */
 exports.saveHar = function(page) {
     fs.write("AllInOne.har", JSON.stringify(har, undefined, 2), "w");
-    //sendHar(har);
-    //har.log.pages = [];
-    //har.log.entries = [];
 };
 
 exports.stepEnds = function ( page ) {
@@ -225,4 +239,4 @@ exports.stepEnds = function ( page ) {
     createHar(page);
     resetPage(page);
     page.currentStep++;
-}
+};

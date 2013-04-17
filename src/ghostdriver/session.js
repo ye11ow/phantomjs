@@ -157,11 +157,8 @@ ghostdriver.Session = function(desiredCapabilities) {
 
 			//++ADDED BY MIN ZHANG
 			var page = _windows[_currentWindowHandle];
-			page.timings.onLoad = new Date() - page.timings.start;
-            page.timings.end = page.timings.onLoad;
 			//page.render("c:\\finished1.png");
-            page.onFinishedRender = page.renderBase64("gif");
-            harhelper.resetAttampts(page);
+            harhelper.loadEnds(page);
             //--ADDED BY MIN ZHANG
             onLoadFinishedArgs = Array.prototype.slice.call(arguments);
         });
