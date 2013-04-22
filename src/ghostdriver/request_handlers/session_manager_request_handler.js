@@ -74,7 +74,8 @@ ghostdriver.SessionManagerReqHand = function() {
             newSession = new ghostdriver.Session(postObj.desiredCapabilities);
             _sessions[newSession.getId()] = newSession;
 
-            _log.info("_postNewSessionCommand", "New Session Created: " + newSession.getId());
+            //ADDED BY MIN ZHANG
+            //_log.info("_postNewSessionCommand", "New Session Created: " + newSession.getId());
 
             // Redirect to the newly created Session
             res.statusCode = 303; //< "303 See Other"

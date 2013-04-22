@@ -64,7 +64,8 @@ try {
 
     // Start the server
     if (server.listen(ghostdriver.config.port, router.handle)) {
-        _log.info("Main", "running on port " + server.port);
+        //ADDED BY MIN ZHANG
+        //_log.info("Main", "running on port " + server.port);
 
         // If a Selenium Grid HUB was provided, register to it!
         if (ghostdriver.config.hub !== null) {

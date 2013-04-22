@@ -1,3 +1,5 @@
+/*jslint nomen: true, sloppy: true */
+
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
@@ -11,7 +13,7 @@ var fs = require("fs"),
     ATTAMPT_TIMEOUT = 30;
 
 har.log = {
-    version: '1.2', 
+    version: '1.2',
     creator: {
         name: "PhantomJS",
         version: phantom.version.major + '.' + phantom.version.minor +
@@ -43,18 +45,22 @@ function createHar(page) {
             endReply = resource.endReply,
             size = 0;
 
-        size += (startReply ? startReply.bodySize : 0 );
-        size += (endReply ? endReply.bodySize : 0 );
+        size += (startReply ? startReply.bodySize : 0);
+        size += (endReply ? endReply.bodySize : 0);
 
-        if (!request || request.url.match(/(^data:image\/.*)/i)) return;
-        else if (!startReply && !endReply) return;
-        else if (!startReply || !endReply){
+        if (!request || request.url.match(/(^data:image\/.*)/i)) {
+            return;
+        }
+        if (!startReply && !endReply) {
+            return;
+        }
+        if (!startReply || !endReply) {
             //_log.info(JSON.stringify(resource, undefined, 2));
         }
         var entry = {
             pageref: page.currentStep + ":" + page.url,
             startedDateTime: request.time.toISOString(),
-            time: (endReply ? endReply.time - request.time : -1 ),
+            time: (endReply ? endReply.time - request.time : -1),
             request: {
                 method: request.method,
                 url: request.url,
@@ -86,12 +92,27 @@ function createHar(page) {
                 connect: -1,
                 send: 0,
                 wait: (startReply ? startReply.time - request.time : -1),
-                receive: (startReply&&endReply ? endReply.time - startReply.time : -1),
+                receive: (startReply && endReply ? endReply.time - startReply.time : -1),
                 ssl: -1
             }
         };
-        har.log.entries.push( entry );
+        har.log.entries.push(entry);
     });
+}
+
+function getTimeOffset(page) {
+    var time_offset = new Date() - page.timings.start,
+        str = "[";
+    if (time_offset < 10) {
+        str += "0000";
+    } else if (time_offset < 100) {
+        str += "000";
+    } else if (time_offset < 1000) {
+        str += "00";
+    } else if (time_offset < 10000) {
+        str += "0";
+    }
+    return str + time_offset + "]";
 }
 
 /**
@@ -105,53 +126,56 @@ function resetPage(page) {
     page.timings.start = null;
     page.timings.firstByte = null;
     page.inAjax = false;
+    page.hasAjax = false;
     page.resources = [];
 }
 
 //  public
 
 /**
- *	Setting the callback listeners.
+ *  Setting the callback listeners.
  *
  *  @param page
- *	onResourceRequested
- *	onResourceReceived
+ *  onResourceRequested
+ *  onResourceReceived
  *  onInitialized
  *  onCallback
  */
 exports.setCallbackListeners = function(page) {
-	page.resources = [];
+    page.resources = [];
     page.timings = [];
     page.viewportSize = { width: 1280, height: 960 };
     page.attampt = MAX_ATTAMPT;
     page.attamptTimeout = ATTAMPT_TIMEOUT;
-	page.onResourceRequested = function (requestData, networkRequest) {
-		if ( requestData ) {
+    page.onResourceRequested = function (requestData, networkRequest) {
+        if (requestData) {
             DEBUG_RESOURSE_LIST && console.log("Request:  " + requestData.id);
             if (page.timings.start == null) {
                 page.timings.start = new Date();//TODO start time here?
-                DEBUG_STEP && console.log("Step " + page.currentStep + " start");
-                DEBUG_RENDER && page.render("c:\\" + page.currentStep + "start.png");
+                DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + " start");
+                DEBUG_RENDER && page.render(page.currentStep + "start.png");
             }
-			page.resources[requestData.id] = {
-				request: requestData,
-				startReply: null,
-				endReply: null
-			};
-		}
-	};
-	page.onResourceReceived = function (response) {
-		if ( response ) {
+            page.resources[requestData.id] = {
+                request: requestData,
+                startReply: null,
+                endReply: null
+            };
+        }
+    };
+    page.onResourceReceived = function (response) {
+        if (response) {
             DEBUG_RESOURSE_LIST && console.log("Response: " + response.id);
-            if ( page.timings.firstByte == null ) page.timings.firstByte = new Date() - page.timings.start;
-			if (response.stage === 'start') {
-				page.resources[response.id].startReply = response;
-			}
-			if (response.stage === 'end') {
-				page.resources[response.id].endReply = response;
-			}
-		}
-	};
+            if (page.timings.firstByte == null) {
+                page.timings.firstByte = new Date() - page.timings.start;
+            }
+            if (response.stage === 'start') {
+                page.resources[response.id].startReply = response;
+            }
+            if (response.stage === 'end') {
+                page.resources[response.id].endReply = response;
+            }
+        }
+    };
     page.onInitialized = function() {
         page.evaluate( function() {
             document.addEventListener('DOMContentLoaded', function() {
@@ -179,7 +203,7 @@ exports.setCallbackListeners = function(page) {
  *   
  */
 exports.ajaxLoading = function(page) {
-    DEBUG_STEP && !page.inAjax && console.log("Ajax checking");
+    DEBUG_STEP && !page.inAjax && console.log(getTimeOffset(page) + "Waiting for Ajax requests/responses");
     page.inAjax = true;
     if (!page.onFinishedRender) {
         page.onFinishedRender = page.renderBase64("png");
@@ -195,6 +219,8 @@ exports.ajaxLoading = function(page) {
             page.onFinishedRender = render;
             page.attampt = MAX_ATTAMPT;
             page.attamptTimeout--;
+            page.hasAjax = true;
+            DEBUG_STEP && console.log(getTimeOffset(page) + "Rendering...");
         }
         else {
             page.attampt--;
@@ -202,10 +228,12 @@ exports.ajaxLoading = function(page) {
         }
         return true;
     }
+    DEBUG_STEP && !page.hasAjax && console.log(getTimeOffset(page) + "No Ajax requests/responses");
+    return false;
 };
 
 exports.loadEnds = function(page) {
-    DEBUG_STEP && console.log("Load Ends");
+    DEBUG_STEP && console.log(getTimeOffset(page) + "Loading ends");
     page.timings.onLoad = new Date() - page.timings.start;
     page.timings.end = page.timings.onLoad;
     page.onFinishedRender = page.renderBase64("png");
@@ -233,9 +261,9 @@ exports.saveHar = function(page) {
     fs.write("AllInOne.har", JSON.stringify(har, undefined, 2), "w");
 };
 
-exports.stepEnds = function ( page ) {
-    DEBUG_STEP && console.log("Step " + page.currentStep + ": " + page.url +" ended");
-    DEBUG_RENDER && page.render("c:\\" + page.currentStep + ".png");
+exports.stepEnds = function (page) {
+    DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": " + page.url +" ends");
+    DEBUG_RENDER && page.render(page.currentStep + ".png");
     createHar(page);
     resetPage(page);
     page.currentStep++;
