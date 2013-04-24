@@ -3,7 +3,7 @@
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
-    DEBUG_AJAX = true,
+    DEBUG_AJAX = false,
     DEBUG_RENDER = false;
 
 //  private
@@ -44,7 +44,7 @@ function createHar(page) {
             startReply = resource.startReply,
             endReply = resource.endReply,
             size = 0,
-            entry;
+            entry = {};
 
         size += (startReply ? startReply.bodySize : 0);
         size += (endReply ? endReply.bodySize : 0);
