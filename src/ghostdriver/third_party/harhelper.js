@@ -9,23 +9,38 @@ var DEBUG_RESOURSE_LIST = false,
 //  private
 var fs = require("fs"),
     har = {},
-    MAX_ATTAMPT = 10,
-    ATTAMPT_TIMEOUT = 30;
+    config = {};
 
-har.log = {
-    version: '1.2',
-    creator: {
-        name: "PhantomJS",
-        version: phantom.version.major + '.' + phantom.version.minor +
-            '.' + phantom.version.patch
-    },
-    browser: {
-        name: "QtWetkit",
-        version: "4.8"
-    },
-    pages: [],
-    entries: []
-};
+// init har
+function initHar() {
+    har.log = {
+        version: '1.2',
+        creator: {
+            name: "PhantomJS",
+            version: phantom.version.major + '.' + phantom.version.minor +
+                '.' + phantom.version.patch
+        },
+        browser: {
+            name: "QtWetkit",
+            version: "4.8"
+        },
+        pages: [],
+        entries: []
+    };
+}
+
+function init() {
+    // init config
+    config = {
+        harfiles : "seperated",
+        MAX_ATTAMPT : 8,
+        ATTAMPT_TIMEOUT : 24
+    };
+    // init har file
+    initHar();
+}
+
+
 
 function createHar(page) {
     har.log.pages.push({
@@ -146,8 +161,8 @@ exports.setCallbackListeners = function(page) {
     page.resources = [];
     page.timings = [];
     page.viewportSize = { width: 1280, height: 960 };
-    page.attampt = MAX_ATTAMPT;
-    page.attamptTimeout = ATTAMPT_TIMEOUT;
+    page.attampt = config["MAX_ATTAMPT"];
+    page.attamptTimeout = config["ATTAMPT_TIMEOUT"];
     page.onResourceRequested = function (requestData, networkRequest) {
         if (requestData) {
             DEBUG_RESOURSE_LIST && console.log("Request:  " + requestData.id);
@@ -226,7 +241,7 @@ exports.ajaxLoading = function(page) {
                 DEBUG_AJAX && console.log("Length Changed: " + diff);
                 page.timings.end = new Date() - page.timings.start - 50;//interval = 100
                 page.onFinishedRender = render;
-                page.attampt = MAX_ATTAMPT;
+                page.attampt = config["MAX_ATTAMPT"];
                 page.attamptTimeout--;
                 page.hasAjax = true;
                 DEBUG_STEP && console.log(getTimeOffset(page) + "Rendering...");
@@ -244,13 +259,18 @@ exports.ajaxLoading = function(page) {
     return false;
 };
 
+/*
+*   Reach page.onload
+*   @param page
+*   
+*/
 exports.loadEnds = function(page) {
     DEBUG_STEP && console.log(getTimeOffset(page) + "Loading ends");
     page.timings.onLoad = new Date() - page.timings.start;
     page.timings.end = page.timings.onLoad;
     page.onFinishedRender = page.renderBase64("png");
-    page.attampt = MAX_ATTAMPT;
-    page.attamptTimeout = ATTAMPT_TIMEOUT;
+    page.attampt = config["MAX_ATTAMPT"];
+    page.attamptTimeout = config["ATTAMPT_TIMEOUT"];
 };
 
 /*
@@ -259,8 +279,8 @@ exports.loadEnds = function(page) {
 *   
 */
 exports.resetAttampts = function(page) {
-    page.attampt = MAX_ATTAMPT;
-    page.attamptTimeout = ATTAMPT_TIMEOUT;
+    page.attampt = config["MAX_ATTAMPT"];
+    page.attamptTimeout = config["ATTAMPT_TIMEOUT"];
 };
 
 /*
@@ -270,7 +290,7 @@ exports.resetAttampts = function(page) {
 *
 */
 exports.saveHar = function(page) {
-    fs.write("AllInOne.har", JSON.stringify(har, undefined, 2), "w");
+    fs.write("AllInOne.har", JSON.stringify(har, undefined, 0), "w");
 };
 
 exports.stepEnds = function (page) {
@@ -280,3 +300,5 @@ exports.stepEnds = function (page) {
     resetPage(page);
     page.currentStep++;
 };
+
+init();
