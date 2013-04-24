@@ -1,9 +1,9 @@
-/*jslint nomen: true, sloppy: true */
+/*jslint browser: true, eqeq: true, nomen: true, plusplus: true, sloppy: true, todo: true */
 
 //  debug
 var DEBUG_RESOURSE_LIST = false,
     DEBUG_STEP = true,
-    DEBUG_AJAX = false,
+    DEBUG_AJAX = true,
     DEBUG_RENDER = false;
 
 //  private
@@ -43,7 +43,8 @@ function createHar(page) {
         var request = resource.request,
             startReply = resource.startReply,
             endReply = resource.endReply,
-            size = 0;
+            size = 0,
+            entry;
 
         size += (startReply ? startReply.bodySize : 0);
         size += (endReply ? endReply.bodySize : 0);
@@ -57,7 +58,7 @@ function createHar(page) {
         if (!startReply || !endReply) {
             //_log.info(JSON.stringify(resource, undefined, 2));
         }
-        var entry = {
+        entry = {
             pageref: page.currentStep + ":" + page.url,
             startedDateTime: request.time.toISOString(),
             time: (endReply ? endReply.time - request.time : -1),
@@ -177,7 +178,7 @@ exports.setCallbackListeners = function(page) {
         }
     };
     page.onInitialized = function() {
-        page.evaluate( function() {
+        page.evaluate(function() {
             document.addEventListener('DOMContentLoaded', function() {
                 window.callPhantom('DOMContentLoaded');
             }, false);
@@ -187,14 +188,13 @@ exports.setCallbackListeners = function(page) {
         });
     };
     page.onCallback = function(data) {
-        if (data == 'DOMContentLoaded') {
+        if (data === 'DOMContentLoaded') {
             page.timings.DOMContentLoaded = new Date() - page.timings.start;
-        }
-        else if (data == 'Load') {
+        } else if (data === 'Load') {
             page.timings.onLoad = new Date() - page.timings.start;
         }
     };
-	return page;
+    return page;
 };
 
 /**
@@ -207,22 +207,34 @@ exports.ajaxLoading = function(page) {
     page.inAjax = true;
     if (!page.onFinishedRender) {
         page.onFinishedRender = page.renderBase64("png");
-        if (!page.onFinishedRender) return false;
+        if (!page.onFinishedRender) {
+            return false;
+        }
         return true;
     }
-    DEBUG_AJAX && console.log("Attampt: " + page.attampt + "; Glocal Attampt:" + page.attamptTimeout + "; Render: " + page.onFinishedRender.length );
-    if (page.onFinishedRender != undefined && page.attampt > 0 && page.attamptTimeout > 0) {
-        var render = page.renderBase64("png");
-        if ( page.onFinishedRender.length != render.length ) {//TODO compare conteng instead of length
-            DEBUG_AJAX && console.log("Length Changed: " + (page.onFinishedRender.length - render.length));            
-            page.timings.end = new Date() - page.timings.start - 50;//interval = 100
-            page.onFinishedRender = render;
-            page.attampt = MAX_ATTAMPT;
-            page.attamptTimeout--;
-            page.hasAjax = true;
-            DEBUG_STEP && console.log(getTimeOffset(page) + "Rendering...");
-        }
-        else {
+    DEBUG_AJAX && console.log("Attampt: " + page.attampt + "; Glocal Attampt:" + page.attamptTimeout + "; Render: " + page.onFinishedRender.length);
+    if (page.onFinishedRender && page.attampt > 0 && page.attamptTimeout > 0) {
+        var render = page.renderBase64("png"),
+            diff;
+        if (page.onFinishedRender.length !== render.length) {//TODO compare content instead of length
+            diff = page.onFinishedRender.length - render.length;
+            if (diff < 0) {
+                diff = -diff;
+            }
+            //diff is greater than 2% 
+            if (render.length != 0 && (diff * 100 / render.length) >= 1) {
+                DEBUG_AJAX && console.log("Length Changed: " + diff);
+                page.timings.end = new Date() - page.timings.start - 50;//interval = 100
+                page.onFinishedRender = render;
+                page.attampt = MAX_ATTAMPT;
+                page.attamptTimeout--;
+                page.hasAjax = true;
+                DEBUG_STEP && console.log(getTimeOffset(page) + "Rendering...");
+            } else {
+                page.attampt--;
+                page.attamptTimeout--;
+            }
+        } else {
             page.attampt--;
             page.attamptTimeout--;
         }
