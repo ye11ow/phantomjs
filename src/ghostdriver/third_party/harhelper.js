@@ -95,7 +95,7 @@ function createHar(page) {
                 headers: (endReply ? endReply.headers : startReply.headers),
                 content: {
                     size: size,
-                    mimeType: (endReply ? endReply.contentType : startReply.contentType)
+                    mimeType: (endReply ? endReply.contentType : "")
                 },
                 redirectURL: "",//Redirection target URL from the Location response header.
                 headersSize: (startReply ? startReply.headerSize : -1),
