@@ -36,6 +36,22 @@ function init() {
         MAX_ATTAMPT : 8,
         ATTAMPT_TIMEOUT : 24
     };
+    if (fs.exists("harhelper.js")) {
+        cfg = JSON.parse(fs.read("harhelper.js"));
+        if (cfg["DEBUG_RESOURSE_LIST"]) {
+            DEBUG_RESOURSE_LIST = cfg["DEBUG_RESOURSE_LIST"];
+        }
+        if (cfg["DEBUG_STEP"]) {
+            DEBUG_STEP = cfg["DEBUG_STEP"];
+        }
+        if (cfg["DEBUG_AJAX"]) {
+            DEBUG_AJAX = cfg["DEBUG_AJAX"];
+        }
+        if (cfg["DEBUG_RENDER"]) {
+            DEBUG_RENDER = cfg["DEBUG_RENDER"];
+        }
+    }
+    
     // init har file
     initHar();
 }
@@ -95,7 +111,7 @@ function createHar(page) {
                 headers: (endReply ? endReply.headers : startReply.headers),
                 content: {
                     size: size,
-                    mimeType: (endReply ? endReply.contentType : "")
+                    mimeType: ((endReply && endReply.contentType != null) ? endReply.contentType : "")
                 },
                 redirectURL: "",//Redirection target URL from the Location response header.
                 headersSize: (startReply ? startReply.headerSize : -1),
@@ -165,10 +181,10 @@ exports.setCallbackListeners = function(page) {
     page.attamptTimeout = config["ATTAMPT_TIMEOUT"];
     page.onResourceRequested = function (requestData, networkRequest) {
         if (requestData) {
-            DEBUG_RESOURSE_LIST && console.log("Request:  " + requestData.id);
+            DEBUG_RESOURSE_LIST && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": Request:  " + requestData.id);
             if (page.timings.start == null) {
                 page.timings.start = new Date();//TODO start time here?
-                DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + " start");
+                DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": start");
                 DEBUG_RENDER && page.render(page.currentStep + "start.png");
             }
             page.resources[requestData.id] = {
@@ -218,7 +234,10 @@ exports.setCallbackListeners = function(page) {
  *   
  */
 exports.ajaxLoading = function(page) {
-    DEBUG_STEP && !page.inAjax && console.log(getTimeOffset(page) + "Waiting for Ajax requests/responses");
+    if (page.timings.start == null) {
+        return false;
+    }
+    DEBUG_STEP && !page.inAjax && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": Waiting for Ajax requests/responses");
     page.inAjax = true;
     if (!page.onFinishedRender) {
         page.onFinishedRender = page.renderBase64("png");
@@ -244,7 +263,7 @@ exports.ajaxLoading = function(page) {
                 page.attampt = config["MAX_ATTAMPT"];
                 page.attamptTimeout--;
                 page.hasAjax = true;
-                DEBUG_STEP && console.log(getTimeOffset(page) + "Rendering...");
+                DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": Rendering...");
             } else {
                 page.attampt--;
                 page.attamptTimeout--;
@@ -255,7 +274,7 @@ exports.ajaxLoading = function(page) {
         }
         return true;
     }
-    DEBUG_STEP && !page.hasAjax && console.log(getTimeOffset(page) + "No Ajax requests/responses");
+    DEBUG_STEP && !page.hasAjax && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": No Ajax requests/responses");
     return false;
 };
 
@@ -265,14 +284,14 @@ exports.ajaxLoading = function(page) {
 *   
 */
 exports.loadEnds = function(page) {
-    DEBUG_STEP && console.log(getTimeOffset(page) + "Loading ends");
+    DEBUG_STEP && console.log(getTimeOffset(page) + "Step " + page.currentStep + ": Loading ends");
     page.timings.onLoad = new Date() - page.timings.start;
     page.timings.end = page.timings.onLoad;
     page.onFinishedRender = page.renderBase64("png");
     page.attampt = config["MAX_ATTAMPT"];
     page.attamptTimeout = config["ATTAMPT_TIMEOUT"];
 };
-
+    
 /*
 *   Reset ATTAMPT and ATTAMPT_TIMEOUT
 *   @param page
