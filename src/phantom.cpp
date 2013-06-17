@@ -122,6 +122,8 @@ void Phantom::init()
             }
         }
     }
+	// Added by Min Zhang: force PhantomJS to use system proxy.
+	QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     // Set output encoding
     Terminal::instance()->setEncoding(m_config.outputEncoding());
